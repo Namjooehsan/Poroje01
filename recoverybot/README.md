@@ -8,24 +8,24 @@ A private Telegram companion and Android heartbeat agent for documenting an auth
 - The Android agent sends a periodic device/runtime heartbeat only.
 - Do not upload account credentials, private keys, or personal app data to this repository.
 
-## Railway layout
-Deploy this repository directory as two Railway services from the same GitHub repository:
-1. API service: start command `uvicorn server:app --host 0.0.0.0 --port $PORT`
-2. Worker service: start command `python bot.py`
+## Railway deployment (single service)
+Deploy the repository with the Railway service root directory set to `recoverybot`.
+The single web service runs both the FastAPI heartbeat API and Telegram polling bot in one process, sharing one SQLite database.
 
-Set these variables on both services:
-- `DATABASE_PATH=/data/recoverybot.sqlite3`
-- `AGENT_SHARED_SECRET` (same long random value on API and worker)
+Start command:
+`uvicorn server:app --host 0.0.0.0 --port $PORT`
 
-Set these additional variables on the worker:
+Set these Railway variables:
 - `BOT_TOKEN` (from @BotFather)
 - `ADMIN_TELEGRAM_ID` (your numeric Telegram user ID)
+- `AGENT_SHARED_SECRET` (a long random secret shared with the phone agent)
+- `DATABASE_PATH=/data/recoverybot.sqlite3`
 
-Attach a Railway Volume mounted at `/data` to the API and worker if they must share persistent SQLite data. For production, a managed PostgreSQL database is preferable to sharing SQLite between two services.
+Attach a Railway Volume mounted at `/data` if you need the SQLite notes and device status to persist across redeploys. Without a volume, local database contents may be lost on redeploy.
 
 ## Android agent
 The agent uses only Python standard-library modules. Set:
-- `RECOVERYBOT_API=https://YOUR-API-DOMAIN`
+- `RECOVERYBOT_API=https://YOUR-RAILWAY-DOMAIN`
 - `AGENT_SHARED_SECRET=the_same_secret_as_Railway`
 - `DEVICE_ID=huawei-android`
 
