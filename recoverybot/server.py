@@ -1,11 +1,29 @@
 import hmac
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from database import init_db, update_device, get_device
+from bot import build_application
 
-app = FastAPI(title="RecoveryBot API", version="1.0.0")
-init_db()
+telegram_app = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global telegram_app
+    init_db()
+    telegram_app = build_application()
+    await telegram_app.initialize()
+    await telegram_app.start()
+    await telegram_app.updater.start_polling()
+    yield
+    await telegram_app.updater.stop()
+    await telegram_app.stop()
+    await telegram_app.shutdown()
+
+
+app = FastAPI(title="RecoveryBot API", version="1.0.0", lifespan=lifespan)
 
 
 class Heartbeat(BaseModel):
@@ -23,7 +41,7 @@ def authorize(value: str | None):
 
 @app.get("/healthz")
 def health():
-    return {"ok": True, "service": "RecoveryBot API"}
+    return {"ok": True, "service": "RecoveryBot API and Telegram bot"}
 
 
 @app.post("/v1/agent/heartbeat")
