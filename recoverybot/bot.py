@@ -4,12 +4,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from database import init_db, add_note, get_notes, get_device
 
-logging.basicConfig(
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    level=logging.INFO,
-)
 log = logging.getLogger("recoverybot")
-
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 ADMIN_ID = os.getenv("ADMIN_TELEGRAM_ID", "")
 
@@ -43,7 +38,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "این ربات برای ثبت روند بازیابی مجاز است.\n"
         "رمزها را دریافت یا حدس نمی‌زند و روی صفحه ورود تلاش خودکار انجام نمی‌دهد.\n"
-        "یادداشت: /note بررسی فایل پشتیبان انجام شد"
+        "یادداشت: /note بررسی نسخه پشتیبان انجام شد"
     )
 
 
@@ -53,7 +48,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     row = get_device("huawei-android")
     if row is None:
         await update.message.reply_text(
-            "هنوز هیچ گزارشی از گوشی دریافت نشده است. عامل گوشی را اجرا کن."
+            "هنوز گزارشی از گوشی دریافت نشده است. عامل گوشی را اجرا کن."
         )
         return
     await update.message.reply_text(
@@ -88,18 +83,22 @@ async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines)[:3900])
 
 
-def main():
+def build_application():
     if not BOT_TOKEN or not ADMIN_ID:
         raise RuntimeError("Set BOT_TOKEN and ADMIN_TELEGRAM_ID environment variables.")
+    application = Application.builder().token(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("status", status))
+    application.add_handler(CommandHandler("note", note))
+    application.add_handler(CommandHandler("history", history))
+    return application
+
+
+def main():
+    logging.basicConfig(level=logging.INFO)
     init_db()
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("status", status))
-    app.add_handler(CommandHandler("note", note))
-    app.add_handler(CommandHandler("history", history))
-    log.info("RecoveryBot starting")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    build_application().run_polling()
 
 
 if __name__ == "__main__":
